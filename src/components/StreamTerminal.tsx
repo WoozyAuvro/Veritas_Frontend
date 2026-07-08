@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   Circle,
   Clock,
@@ -26,6 +26,7 @@ export default function StreamTerminal({
   isStartingAgent,
 }: StreamTerminalProps) {
   const terminalBottomRef = useRef<HTMLDivElement>(null);
+  const [elapsedMs, setElapsedMs] = useState(0);
 
   // Auto-scroll to bottom of logs on new log arrival
   useEffect(() => {
@@ -33,6 +34,40 @@ export default function StreamTerminal({
       terminalBottomRef.current.scrollIntoView({ behavior: "smooth" });
     }
   }, [logs]);
+
+  // Stopwatch timer logic to show real-time responsiveness
+  useEffect(() => {
+    let intervalId: any;
+    if (status === "ingesting" || status === "analyzing") {
+      const realStart = performance.now();
+      intervalId = setInterval(() => {
+        setElapsedMs(performance.now() - realStart);
+      }, 50);
+    } else if (status === "completed" || status === "failed" || status === "ingestion_complete") {
+      // Freezes the final elapsed duration for display
+    } else {
+      setElapsedMs(0);
+    }
+
+    return () => {
+      if (intervalId) clearInterval(intervalId);
+    };
+  }, [status]);
+
+  const formatTime = (ms: number) => {
+    const totalSeconds = ms / 1000;
+    const minutes = Math.floor(totalSeconds / 60);
+    const seconds = Math.floor(totalSeconds % 60);
+    const hundredths = Math.floor((ms % 1000) / 10);
+    
+    const pad = (num: number, size: number) => {
+      let s = num.toString();
+      while (s.length < size) s = "0" + s;
+      return s;
+    };
+    
+    return `${pad(minutes, 2)}:${pad(seconds, 2)}.${pad(hundredths, 2)}`;
+  };
 
   // Parse ingestion milestones from logs
   const getStepStatus = (stepIndex: number) => {
@@ -102,12 +137,20 @@ export default function StreamTerminal({
             <span className={status === "completed" ? "text-success-custom shrink-0 font-bold" : "text-accent-custom shrink-0 font-bold animate-pulse"}>
               [{status.toUpperCase()}]
             </span>
+            {(status === "ingesting" || status === "analyzing") && (
+              <span className="text-warning-custom font-bold shrink-0 animate-pulse">
+                [TICKING {formatTime(elapsedMs)}]
+              </span>
+            )}
             <span className="text-muted truncate">
               {latestLog.replace(/^\[.*?\]\s*/, "")}
             </span>
           </div>
-          <div className="text-muted text-[10px] font-mono hidden sm:block">
-            {new Date().toLocaleTimeString()}
+          <div className="text-muted text-[10px] font-mono hidden sm:flex items-center gap-2">
+            {(status === "ingesting" || status === "analyzing") && (
+              <span className="inline-block w-2 h-2 bg-emerald-500 rounded-full animate-ping mr-1" />
+            )}
+            <span>{new Date().toLocaleTimeString()}</span>
           </div>
         </div>
       )}
@@ -120,28 +163,63 @@ export default function StreamTerminal({
       >
         <div className="p-5 grid grid-cols-1 lg:grid-cols-4 gap-6 bg-canvas/40">
           {/* Sequential Trackers / Pipeline Checklist */}
-          <div className="lg:col-span-1 space-y-4 lg:border-r border-border-custom/50 pr-4">
-            <h4 className="text-[10px] font-mono uppercase font-bold text-ink tracking-wider">
-              Ingestion Sequence
-            </h4>
-            <div className="space-y-3 font-mono text-xs">
-              <div className="flex items-center gap-2.5">
-                {stepIcon(getStepStatus(0))}
-                <span className={stepClass(getStepStatus(0))}>
-                  Database Structuring
-                </span>
+          <div className="lg:col-span-1 space-y-4 lg:border-r border-border-custom/50 pr-4 flex flex-col justify-between">
+            <div className="space-y-4">
+              <h4 className="text-[10px] font-mono uppercase font-bold text-ink tracking-wider">
+                Ingestion Sequence
+              </h4>
+              <div className="space-y-3 font-mono text-xs">
+                <div className="flex items-center gap-2.5">
+                  {stepIcon(getStepStatus(0))}
+                  <span className={stepClass(getStepStatus(0))}>
+                    Database Structuring
+                  </span>
+                </div>
+                <div className="flex items-center gap-2.5">
+                  {stepIcon(getStepStatus(1))}
+                  <span className={stepClass(getStepStatus(1))}>
+                    Document Upload
+                  </span>
+                </div>
+                <div className="flex items-center gap-2.5">
+                  {stepIcon(getStepStatus(2))}
+                  <span className={stepClass(getStepStatus(2))}>
+                    Vector Embedding Map
+                  </span>
+                </div>
               </div>
-              <div className="flex items-center gap-2.5">
-                {stepIcon(getStepStatus(1))}
-                <span className={stepClass(getStepStatus(1))}>
-                  Document Upload
-                </span>
-              </div>
-              <div className="flex items-center gap-2.5">
-                {stepIcon(getStepStatus(2))}
-                <span className={stepClass(getStepStatus(2))}>
-                  Vector Embedding Map
-                </span>
+            </div>
+
+            {/* Real-time High-Precision Stopwatch & Network Heartbeat Dashboard */}
+            <div className="pt-4 border-t border-border-custom/30 space-y-2 mt-4 lg:mt-0">
+              <h4 className="text-[10px] font-mono uppercase font-bold text-ink tracking-wider flex items-center gap-1.5">
+                <Activity className="h-3 w-3 text-accent-custom animate-pulse" />
+                Live Engine Metrics
+              </h4>
+              <div className="bg-[#09090b] border border-border-custom/80 p-2.5 space-y-2 font-mono text-[10px] text-muted">
+                <div className="flex justify-between">
+                  <span>ELAPSED TIMER:</span>
+                  <span className={(status === "ingesting" || status === "analyzing") ? "text-warning-custom font-bold" : "text-ink"}>
+                    {formatTime(elapsedMs)}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span>SIGNAL STATUS:</span>
+                  <span className={(status === "ingesting" || status === "analyzing") ? "text-emerald-500 animate-pulse font-bold" : "text-ink"}>
+                    {(status === "ingesting" || status === "analyzing") ? "ACTIVE_SYNC" : "STANDBY"}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span>PULSE CYCLES:</span>
+                  <span className="text-ink">
+                    {Math.max(1, Math.floor(elapsedMs / 1000))} ticks
+                  </span>
+                </div>
+                {(status === "ingesting" || status === "analyzing") && (
+                  <div className="pt-1 text-[9px] text-emerald-500/80 leading-normal animate-pulse">
+                    &gt; Polling active loop pipelines...
+                  </div>
+                )}
               </div>
             </div>
           </div>
