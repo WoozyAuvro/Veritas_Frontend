@@ -1,0 +1,6 @@
+{
+  "name": "Veritas AI Forensic Engine",
+  "description": "An automated, agentic corporate fraud audit platform executing statistical filters and vector database searches for case resolution.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
