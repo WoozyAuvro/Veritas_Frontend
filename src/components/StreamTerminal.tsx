@@ -27,6 +27,7 @@ export default function StreamTerminal({
 }: StreamTerminalProps) {
   const terminalBottomRef = useRef<HTMLDivElement>(null);
   const [elapsedMs, setElapsedMs] = useState(0);
+  const [isRunning, setIsRunning] = useState(false);
 
   // Auto-scroll to bottom of logs on new log arrival
   useEffect(() => {
@@ -35,24 +36,35 @@ export default function StreamTerminal({
     }
   }, [logs]);
 
+  // Determine running state from status transitions
+  useEffect(() => {
+    const activeStatuses = ["ingesting", "analyzing", "queued", "running"];
+    const finishedStatuses = ["completed", "failed", "ingestion_complete"];
+
+    if (activeStatuses.includes(status)) {
+      setIsRunning(true);
+    } else if (finishedStatuses.includes(status)) {
+      setIsRunning(false);
+    } else {
+      setIsRunning(false);
+      setElapsedMs(0);
+    }
+  }, [status]);
+
   // Stopwatch timer logic to show real-time responsiveness
   useEffect(() => {
     let intervalId: any;
-    if (status === "ingesting" || status === "analyzing") {
+    if (isRunning) {
       const realStart = performance.now();
       intervalId = setInterval(() => {
         setElapsedMs(performance.now() - realStart);
       }, 50);
-    } else if (status === "completed" || status === "failed" || status === "ingestion_complete") {
-      // Freezes the final elapsed duration for display
-    } else {
-      setElapsedMs(0);
     }
 
     return () => {
       if (intervalId) clearInterval(intervalId);
     };
-  }, [status]);
+  }, [isRunning]);
 
   const formatTime = (ms: number) => {
     const totalSeconds = ms / 1000;
