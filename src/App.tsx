@@ -102,6 +102,13 @@ export default function App() {
           if (response.ok) {
             const data = await response.json();
             setJobStatus(data.status);
+            
+            // Fallback: If backend sends logs in the poll response, update them here to bypass stream buffering
+            const polledLogs = data.logs || data.terminalLogs || data.terminal_logs;
+            if (polledLogs && Array.isArray(polledLogs)) {
+              setTerminalLogs(polledLogs);
+            }
+
             if (data.status === "completed" || data.status === "failed") {
               clearInterval(interval);
               resolve(data.status);
@@ -256,14 +263,7 @@ export default function App() {
       console.error("Failed to trigger demo analysis:", e);
       setJobStatus("failed");
       setTerminalLogs((prev) => [...prev, `[ERROR] Demo analysis execution failed: ${e.message || e}`]);
-    }
-//     }catch (e: any) {
-//   console.error(e);
-//   console.error(e.stack);
-//   console.error(e.name);
-//   console.error(e.message);
-// }
-     finally {
+    } finally {
       setIsUploading(false);
     }
   };
