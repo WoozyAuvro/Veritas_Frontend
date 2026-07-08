@@ -252,17 +252,17 @@ export default function App() {
           setTerminalLogs((prev) => [...prev, `[ERROR] Demo analysis execution failed.`]);
         }
       }
-    // } catch (e: any) {
-    //   console.error("Failed to trigger demo analysis:", e);
-    //   setJobStatus("failed");
-    //   setTerminalLogs((prev) => [...prev, `[ERROR] Demo analysis execution failed: ${e.message || e}`]);
-    // }
-    }catch (e: any) {
-  console.error(e);
-  console.error(e.stack);
-  console.error(e.name);
-  console.error(e.message);
-}
+    } catch (e: any) {
+      console.error("Failed to trigger demo analysis:", e);
+      setJobStatus("failed");
+      setTerminalLogs((prev) => [...prev, `[ERROR] Demo analysis execution failed: ${e.message || e}`]);
+    }
+//     }catch (e: any) {
+//   console.error(e);
+//   console.error(e.stack);
+//   console.error(e.name);
+//   console.error(e.message);
+// }
      finally {
       setIsUploading(false);
     }
